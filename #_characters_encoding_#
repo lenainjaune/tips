@@ -1,0 +1,97 @@
+# Cas pratique : j'ai une commande (ici depuis un terminal Linux qui accède par SSH à Cygwin) qui renvoie un texte peu lisible du au conversions d'accents
+$ cmd /c "dir /?"
+...
+DIRCMD. Pour les ignorer, les pr�fixer avec un trait d'union. Par exemple /-W.
+
+# Il faut déterminer quel est le problème d'encodage
+$ cmd /c "dir /?" | od -ct u1
+...
+0004060   e   n   t  \r  \n   D   I   R   C   M   D   .       P   o   u
+        101 110 116  13  10  68  73  82  67  77  68  46  32  80 111 117
+0004100   r       l   e   s       i   g   n   o   r   e   r   ,       l
+        114  32 108 101 115  32 105 103 110 111 114 101 114  44  32 108
+0004120   e   s       p   r 202   f   i   x   e   r       a   v   e   c
+        101 115  32 112 114 130 102 105 120 101 114  32  97 118 101  99
+0004140       u   n       t   r   a   i   t       d   '   u   n   i   o
+         32 117 110  32 116 114  97 105 116  32 100  39 117 110 105 111
+0004160   n   .       P   a   r       e   x   e   m   p   l   e       /
+        110  46  32  80  97 114  32 101 120 101 109 112 108 101  32  47
+0004200   -   W   .  \r  \n
+         45  87  46  13  10
+0004205
+
+# Nota : la commande od (Octal Dump - affichage en octal) de dessus `od -ct u1', affiche sur la 1ère ligne les caractères renvoyé par la commande (si ASCII étendu affiche plutôt le code du caractère en octal) et sur la 2ème ligne le code décimal non signé (= unsigned) associé sur 1 octet (=> valeurs de 0->255)
+
+# On voit ici que le caractère problématique est le `é' de "préfixer" de code 130 en décimal (ASCII étendu donc affiché avec le code octal 202)
+
+# Reste à déterminer quel encodage fait que le `é' soit traduit par le code 130 : recherche de "e acute 130"
+
+# Il s'agirait du CP850 (DOS Latin 1 qui redéfinit l'ASCII en modifiant l'ASCII étendu [1])
+
+# Pour s'en assurer :
+$ cmd /c "echo ÇüéâäàåçêëèïîìÄÅ" | od -ct u1
+0000000 200 201 202 203 204 205 206 207 210 211 212 213 214 215 216 217
+        128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143
+0000020  \r  \n
+         13  10
+0000022
+
+# Qui doit correspondre avec l'encodage de code 850 (DOS Latin 1) — mode standard (https://fr.wikipedia.org/wiki/Page_de_code_850) :
+#   	0 	1 	2 	3 	4 	5 	6 	7 	8 	9 	A 	B 	C 	D 	E 	F
+#8x 	"Ç" 	"ü" 	"é" 	"â" 	"ä" 	"à" 	"å" 	"ç" 	"ê" 	"ë" 	"è" 	"ï" 	"î" 	"ì" 	"Ä" 	"Å"
+# nota : 8x c'est en base héxadécimal soit en décimal 128 (8x16) à 143 (128 + 15)
+
+# => c'est bien le cas !
+
+
+# Au final on convertit l'encodage
+$ cmd /c "dir /?" | iconv -f cp850 -t utf8//TRANSLIT
+...
+DIRCMD. Pour les ignorer, les préfixer avec un trait d'union. Par exemple /-W.
+# iconv permet de convertir l'encodage de manière à l'afficher correctement depuis le terminal
+
+# Mission accomplie !
+
+# Nota : si on utilise directement mintty (le terminal Cygwin depuis Windows) on peut utiliser la même solution (ou alors changer le jeu de caractères dans les options en CP850)
+
+
+# Autre exemple depuis un terminal bash sous Linux (la commande liste les installations de correctifs Windows Update) :
+ssh user@computer-w7p "wevtutil qe system /f:text \"/q:*[System[Provider[@Name='Microsoft-Windows-WindowsUpdateClient'] and (EventID=19)]]\"" |
+...
+Installation r�ussie�: Windows a install� la mise � jour suivante�: Mise � jour pour Windows (KB3125574)
+
+ssh user@computer-w7p "wevtutil qe system /f:text \"/q:*[System[Provider[@Name='Microsoft-Windows-WindowsUpdateClient'] and (EventID=19)]]\"" | od -ct u1
+...
+0007040   a       i   n   s   t   a   l   l 351       l   a       m   i
+         97  32 105 110 115 116  97 108 108 233  32 108  97  32 109 105
+0007060   s   e     340       j   o   u   r       s   u   i   v   a   n
+        115 101  32 224  32 106 111 117 114  32 115 117 105 118  97 110
+0007100   t   e 240   :       M   i   s   e     340       j   o   u   r
+        116 101 160  58  32  77 105 115 101  32 224  32 106 111 117 114
+0007120       p   o   u   r       W   i   n   d   o   w   s       (   K
+         32 112 111 117 114  32  87 105 110 100 111 119 115  32  40  75
+0007140   B   3   1   2   5   5   7   4   )  \r  \n  \r  \n
+         66  51  49  50  53  53  55  52  41  13  10  13  10
+
+# Cette fois le `é' est encodé avec le code décimal 233 (351 en octal), ce qui indiquerait qu'il est en CP1252 le premier encodage de Windows (Windows-1252) successeur de CP850
+
+# Vérification :
+ssh user@$UPDATED_HOST "wevtutil qe system /f:text \"/q:*[System[Provider[@Name='Microsoft-Windows-WindowsUpdateClient'] and (EventID=19)]]\"" | iconv -f cp1252 -t utf8//TRANSLIT
+...
+Installation réussie : Windows a installé la mise à jour suivante : Mise à jour pour Windows (KB3125574)
+
+# Succès !
+
+[1] l'ASCII étendu définit les caractères 128 à 255, en particulier le code décimal ASCII du `é' est 233 alors que pour coder ce même caractère en CP850 il est à 130
+
+
+
+# From Windows
+# si on récupère des données d'un fichier Windows on peut avoir certains problèmes
+
+# il faut supprimer les CR
+cat fichier | tr -d '\r'
+
+# si on utilise des commandes comme awk il faut remplacer les caractères non ASCII (> 127)
+# non ASCII par leur numero octal (\200 = 128 et \377 = 255)
+cat fichier | tr '\200-\377' '?'

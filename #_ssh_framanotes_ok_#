@@ -1,0 +1,40 @@
+# ssh without password
+But : me connecter en ssh avec local_user depuis hote local vers hote distant avec remote_user
+
+##TAG## : ssh without password sshfs rsa keygen
+
+https://unix.stackexchange.com/questions/337465/username-and-password-in-command-line-with-sshfs
+
+```sh
+// selon si existe ou pas
+// local_user@local_host:~$ ssh-keygen -t rsa
+
+// (iniligne) : saisir mot de passe 2 fois
+// local_user@local_host:~$ 
+REMOTE_SYSTEM="remote_user@remote_host" ; [ ! -f "$HOME/.ssh/id_rsa.pub" ] && ( cat /dev/zero | ssh-keygen -t rsa -q -N "" > /dev/null ) ; ssh $REMOTE_SYSTEM "mkdir -p .ssh" ; cat ~/.ssh/id_rsa.pub | ssh $REMOTE_SYSTEM "cat >> ~/.ssh/authorized_keys"
+
+
+// Acces SSH sans mot de passe (génère la clé publique si inexistante)
+local_user@local_host:~$ [ ! -f "$HOME/.ssh/id_rsa.pub" ] && ( cat /dev/zero | ssh-keygen -t rsa -q -N "" > /dev/null )
+local_user@local_host:~$ REMOTE_SYSTEM="remote_user@remote_host"
+local_user@local_host:~$ ssh $REMOTE_SYSTEM "mkdir -p .ssh"
+local_user@local_host:~$ cat ~/.ssh/id_rsa.pub | ssh $REMOTE_SYSTEM "cat >> ~/.ssh/authorized_keys"
+local_user@local_host:~$ ssh $REMOTE_SYSTEM "chmod 700 ~/.ssh; chmod 640 ~/.ssh/authorized_keys"
+
+// test
+local_user@local_host:~$ ssh $REMOTE_SYSTEM
+```
+
+# forcer demande de mot de passe
+
+https://askubuntu.com/questions/419546/ssh-never-ask-for-a-password
+```sh
+user@computer-ubu64:~$ ssh -o PubkeyAuthentication=no user@computer-w7p
+```
+Pour une raison ignorée je ne pouvais pas directement accéder au démarrage par ssh à un poste Windows sous Cygwin.
+
+"ssh user@XXX" indiquait "Connection to user-w7p closed by remote host. Connection to user-w7p closed." MAIS "ssh Admin@XXX" était OK. 
+
+J'en ai déduis que user ne déclenchait pas la même chose que Admin. J'ai essayé de renommer le dossier ~/.ssh par ~/.ssh_old => OK. 
+
+Explication probable : j'ai mis en place un ssh sans mdp pour accéder à une VM et j'ai restauré un snapshot => les accès ne correspondaient plus. Pour s'affranchir de ce problème, il suffit de forcer la demande de mdp
