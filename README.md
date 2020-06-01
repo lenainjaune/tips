@@ -1,2 +1,2 @@
 # tips
-Toutes mes astuces, trouvailles, découvertes, essais ... pour tout le monde :)
+Toutes mes astuces, trouvailles, découvertes, essais ... au gré du temps ... pour tout le monde :)
