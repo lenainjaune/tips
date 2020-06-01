@@ -1,0 +1,6 @@
+# https://stackoverflow.com/questions/10207354/how-to-remove-all-of-the-diacritics-from-a-file#18577008
+
+# Par exemple les username sous Linux ne comportent normalement pas d'accents
+
+# ##TAG## : accent remove correct supprimer corriger username diacritic iconv utf8 ascii translit ignore
+echo "āáǎàēéěèīíǐì" | iconv -f utf8 -t ascii//TRANSLIT//IGNORE
