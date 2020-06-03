@@ -1,0 +1,31 @@
+# accès en RO au contenu du smartphone y compris les SD cards par SSH (SSHFS possible) par la Wifi
+# installer SimpleSSHD sur Android (par Google Play ou par fichier .apk)
+# http://www.galexander.org/software/simplesshd/
+# https://play.google.com/store/apps/details?id=org.galexander.sshd&hl=en_US
+#
+# par défaut SimpleSSHD écoute sur port 2222
+#
+# Activer la wifi (ou autre pour avoir le LAN), éventuellement mettre une IP statique sur Android (gestionnaire de Wifi ou autre)
+# 
+# > Accès "one-shot"
+mon-user@mon-pc:~$ ssh -p 2222 <ip_android>
+# Une fois la demande de connexion initiée sur Android, SimpleSSHD affiche un mot de passe unique qu'il faut taper depuis mon-pc (il n'y a pas de possibilité de fixer le mdp, mais on peut rendre l'accès permanent qui ne demandera pas de mdp)
+# ... la connexion est réalisée
+# > Accès permanent (basé sur #_ssh_framanotes_ok_#)
+# Taper cette commande iniligne en adaptant <ip_android> (gère l'absence de clé publique locale) ; comme en "one-shot" le mot de passe est fournit par SimpleSSHD (voir dessus)
+mon-user@mon-pc:~$ [ ! -f "$HOME/.ssh/id_rsa.pub" ] && ( cat /dev/zero | ssh-keygen -t rsa -q -N "" > /dev/null ) ; cat ~/.ssh/id_rsa.pub | ssh -p 2222 <ip_android> "cat > ~/authorized_keys"
+# Pour se connecter cette fois sans mot de passe et pour la fin des temps :)
+mon-user@mon-pc:~$ ssh -p 2222 <ip_android>
+# > Accès aux photos sur SD card par SSHFS (attention : Read Only et nécessite sshfs sur mon-pc) en ouvrant le gestionnaire de fichier par défaut et en supposant que les photos sont stockées dans DCIM de la carte SD
+mon-user@mon-pc:~$ mkdir $HOME/sshfs_android ; sshfs <ip_android>:/ sshfs_android/ -o port=2222 && sync && xdg-open $HOME/sshfs_android/storage/extSdCard/DCIM
+# Démonter manuellement...
+
+
+# Pour accéder en graphique SFTP depuis Ubuntu sous PCManFM
+Aller à > Se connecter au serveur
+Type SSH
+Hote : <ip_android>
+Port : 2222
+
+
+# Si erreur supprimer la clé
