@@ -1,0 +1,2 @@
+# Compresser avec mot de passe et le contenu caché
+user@host:~$ 7z a -mhe=on -pMotDePasseBalese video.7z video.mp4
