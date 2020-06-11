@@ -1,0 +1,176 @@
+# a revoir : fusionner avec #_linux_mount_disk_image_#
+
+
+Version simplifiée pour monter un VHD au format QCOW2 (ici on monte un VHD formaté en exFAT sous macOS) :
+su
+modprobe nbd max_part=8
+qemu-nbd -c /dev/nbd0 /data/vm/macos_temp.qcow2
+fdisk /dev/nbd0 -l
+mkdir /mnt/macos_temp
+# dans le cas de fat32 (ou ? - voir dessous) : 
+partx -a /dev/nbd0
+mount /dev/nbd0p1 /mnt/macos_temp/
+#
+# do what you want with data ...
+#
+umount /dev/nbd0p1
+rmdir /mnt/macos_temp
+qemu-nbd --disconnect /dev/nbd0
+rmmod nbd
+
+
+# dans le cas de fat32 (ou ?) je dois en plus faire (sinon erreur "mount: special device /dev/nbd0p1 does not exist") ; cela prévient le système qu'il y a plusieurs partitions "man partx" (voir https://lists.gnu.org/archive/html/qemu-discuss/2017-10/msg00064.html)
+
+
+
+# Rappels :
+# FS = File System = système de fichiers (EXT2, EXT3, EXT4, NTFS, FAT, etc.)
+# OS = Operating System = système d'exploitation (souvent réduit au terme "Système") organisé au format FS
+# BOOT = partition de boot (sous Windows 8.1+ et parfois sous Linux)
+# QCOW2 = format de stockage de VM qui autorise les snapshots sous Qemu
+# VM = Virtual Machine = machine virtuelle car c'est comme une machine "physique" réelle (un PC) avec des périphériques "physiques" sauf que tout (OS, périphériques) ou partie, est virtuel. Dans le cas de Qemu/Xen on parle de DomU (Unprivilegied Domains = domaines sans accès privilégié au matériel).
+
+
+
+
+# FORMAT QCOW2
+
+
+# TODO : indiquer comment créer le fichier au format QCOW2
+
+# Cas testé : une VM Windows 10 (from scratch) au format Qemu dont les partitions OS + BOOT sont contenues dans une image disque au format QCOW2 créée à partir de virt-manager
+
+# https://gist.github.com/shamil/62935d9b456a6f9877b5
+# Step 1 - Enable NBD (Network Block Device) on the Host
+user@host:~$ modprobe nbd max_part=8
+
+# Connecter le contenu d'une image QCOW2 en RW en tant que NBD
+user@host:~$ sudo qemu-nbd -c /dev/nbd0 /mnt/3tb/sdd_corsaire_hd_test.qcow2
+
+# Step 3 - Find The Virtual Machine Partitions
+user@host:~$ sudo fdisk /dev/nbd0 -l
+# ou
+user@host:~$ lsblk
+NAME                  MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+...
+nbd0                   43:0    0    25G  0 disk 
+├─nbd0p1               43:1    0   500M  0 part 
+└─nbd0p2               43:2    0  24,5G  0 part /home/user/ssd_corsaire
+# On voit qu'il y a 2 partitions dans l'image QCOW2
+
+# Monter la partition OS
+sudo mount /dev/nbd0p2 ssd_corsaire/
+
+# On voit qu'ici on a bien un système Windows dans l'image
+user@host:~$ ls -al ssd_corsaire/Windows/System32/ntdll.dll
+-rwxrwxrwx 2 root root 1930320 mars  18  2017 ssd_corsaire/Windows/System32/ntdll.dll
+
+# Le contenu de la racine (c.a.d C:\)
+user@host:~$ ls -al ssd_corsaire/
+total 524332
+drwxrwxrwx  1 root root      4096 mars   9 14:54 .
+drwxr-xr-x 84 user  user       4096 mars   9 13:30 ..
+drwxrwxrwx  1 root root         0 mars  18  2017 PerfLogs
+drwxrwxrwx  1 root root      4096 mars  20  2017 ProgramData
+drwxrwxrwx  1 root root      4096 mars  20  2017 Program Files
+drwxrwxrwx  1 root root      4096 mars  20  2017 Program Files (x86)
+drwxrwxrwx  1 root root         0 mars  18  2017 $Recycle.Bin
+drwxrwxrwx  1 root root      4096 mars  18  2017 Users
+drwxrwxrwx  1 root root     20480 mars   8 22:50 Windows
+drwxrwxrwx  1 root root         0 mars   8 22:46 $WINDOWS.~BT
+drwxrwxrwx  1 root root         0 mars   8 22:49 $WINDOWS.~LS
+-rwxrwxrwx  1 root root 536870912 mars   8 22:46 WinPEpge.sys
+
+# Ecriture possible ?
+user@host:~$ touch ssd_corsaire/ok
+user@host:~$ ls -al ssd_corsaire/ok
+-rwxrwxrwx 1 root root 0 mars   9 15:08 ssd_corsaire/ok
+
+# => OUI :)
+
+# Et la suppression ?
+user@host:~$ rm ssd_corsaire/ok
+user@host:~$ ls -al ssd_corsaire/ok
+ls: impossible d'accéder à 'ssd_corsaire/ok': Aucun fichier ou dossier de ce type
+
+# => OUI :)
+
+# Pour démonter la partition
+sudo umount ssd_corsaire/
+
+# Pour arrêter l'accès au contenu de l'image
+sudo qemu-nbd -d /dev/nbd0
+# ... /dev/nbd0 disconnected
+
+# Disable nbd
+rmod nbd
+
+
+
+
+
+
+# FORMAT IMG (créé avec dd)
+
+
+# https://unix.stackexchange.com/questions/316401/how-to-mount-a-disk-image-from-the-command-line
+# https://unix.stackexchange.com/a/316407
+
+
+user@host:~$ ls -al ssd_corsaire_*
+-rwxrwxrwx 1 root root    471859200 Mar  7 11:40 ssd_corsaire_boot_sdb2.img
+-rwxrwxrwx 1 root root 239582838784 Mar  8 16:15 ssd_corsaire_os_sdb1.img
+
+# this will print the first available loop device ex:/dev/loop1
+user@host:~$ losetup -f
+/dev/loop1
+
+# associate loop1 with the specified file
+user@host:~$ sudo losetup /dev/loop1 ssd_corsaire_os_sdb1.img
+
+# If the file have partitions, example a HD image, you can use the -P parameter (depending on you OS), it will map the partitions in the file content: sudo losetup -P /dev/loop1 ssd_corsaire_os_sdb.img
+# So to access partitions : ls /dev/loop1p* #the partitions in the format /dev/loop0pX
+
+# Check that the new device /dev/loop1 is created
+user@host:~$ lsblk /dev/loop*
+lsblk: /dev/loop-control: not a block device
+NAME  MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+loop0   7:0    0 192.8M  1 loop /lib/live/mount/rootfs/filesystem.squashfs
+loop1   7:1    0 223.1G  1 loop 
+
+user@host:~$ mkdir dossier_montage
+
+# Mounting
+user@host:~$ sudo mount /dev/loop1 dossier_montage
+# If error : ntfs-3g-mount: mount failed: Permission denied
+# sudo mount -o ro,loop /dev/loop1 sdd_corsaire_mnt/
+
+user@host:~$ ls -al dossier_montage
+total 485
+drwxrwxrwx 1 root root   8192 Mar  6 22:27  .
+drwxr-xr-x 5 user user    200 Mar  8 16:09  ..
+drwxrwxrwx 1 root root      0 May  6  2011  AsusVibeData
+drwxrwxrwx 1 root root   8192 Dec 16  2016  Boot
+-rwxrwxrwx 1 root root 389408 Dec  9  2016  bootmgr
+-rwxrwxrwx 1 root root      1 Jul 16  2016  BOOTNXT
+-rwxrwxrwx 1 root root   8192 Oct 11  2016  BOOTSECT.BAK
+drwxrwxrwx 1 root root   4096 Oct 19  2016  CADWORK.DIR
+lrwxrwxrwx 2 root root     20 Jul 14  2009 'Documents and Settings' -> /home/user/dossier_montage/Users
+drwxrwxrwx 1 root root      0 Oct 11  2016  inetpub
+drwxrwxrwx 1 root root      0 May  6  2011  Intel
+drwxrwxrwx 1 root root      0 Aug 30  2015  MCsBackup
+drwxrwxrwx 1 root root      0 Jul 16  2016  PerfLogs
+drwxrwxrwx 1 root root   4096 Oct 11  2016  ProgramData
+drwxrwxrwx 1 root root   8192 Oct 11  2016 'Program Files'
+drwxrwxrwx 1 root root  12288 Dec 17  2016 'Program Files (x86)'
+drwxrwxrwx 1 root root      0 Oct 11  2016  Recovery
+drwxrwxrwx 1 root root   4096 Dec 28  2015 '$Recycle.Bin'
+-rwxrwxrwx 1 root root   2142 May  6  2011  RHDSetup.log
+-rwxrwxrwx 1 root root     90 May  6  2011  setup.log
+drwxrwxrwx 1 root root   8192 Dec 20  2016 'System Volume Information'
+drwxrwxrwx 1 root root   4096 Oct 11  2016  Users
+drwxrwxrwx 1 root root  28672 Dec 31  2017  Windows
+
+# To unmount
+user@host:~$ sudo umount dossier_montage
+user@host:~$ sudo losetup -d /dev/loop1
