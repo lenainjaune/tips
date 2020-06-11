@@ -1,0 +1,72 @@
+REM  *****  BASIC  *****
+
+' Important : this code SHOULD be placed on ~/.config/libreoffice/4/user/basic/Standard/ macro
+
+' equivalent topics : 
+' - https://ask.libreoffice.org/en/question/11292/how-to-display-full-file-path-in-window-title/
+' - https://ask.libreoffice.org/en/question/44280/how-to-view-full-path-of-open-document/
+
+Sub on_DocLoad(event As Object)
+	' Important : This Sub SHOULD be connected to the "Open Document" event of LibreOffice.
+	' https://ask.libreoffice.org/en/question/145481/struggling-to-auto-run-a-macro/
+	' The events in LibreOffice : https://help.libreoffice.org/4.2/Basic/Event-Driven_Macros
+	
+	' TODO : find a native way to decode URL without the need of a 3rd party tool and without storing the decoded URL in a temporarily file
+	
+	' New document => nothing to do
+	If ThisComponent.Location = "" Then 
+		Exit Sub
+	End If
+
+	Dim locationInTitleBar As String
+	Dim tempFileLocation As String
+	Dim currentController As Object
+	Dim frame As Object
+	
+	tempFileLocation = Environ("HOME") & "/URL_converted"
+
+	' URL Decode (need python v2.x) to temporarily file
+	' https://unix.stackexchange.com/questions/159253/decoding-url-encoding-percent-encoding#159254
+	cmd = 	"bash -c " & _
+				Chr(34) & _
+					"echo -n " & ThisComponent.Location & _
+					" |python -c 'import sys, urllib as ul; print ul.unquote(sys.stdin.read());'" & _
+					" > " & tempFileLocation & _
+				Chr(34) & _
+			""
+	Shell(cmd, 0, "", true)
+	
+	' Get decoded URL from temporarily file
+	FileNo = Freefile
+	Open tempFileLocation For Input As #fileNo
+	While Not Eof(#fileNo)
+		Line Input #fileNo, locationInTitleBar
+	WEnd
+	Close #fileNo
+	Kill(tempFileLocation)
+
+	' Current location in title bar
+	' https://ask.libreoffice.org/en/question/147789/can-i-change-the-content-of-the-title-bar-from-a-macro/
+	currentController = ThisComponent.getCurrentController()
+	frame = currentController.getFrame()
+	frame.Title = ConvertFromURL(locationInTitleBar) & " - " & getDocumentType(thisComponent)
+End Sub
+
+' Based on https://wiki.openoffice.org/wiki/Currently_active_document
+Function getDocumentType(component As Object) As String
+	If HasUnoInterfaces(component, "com.sun.star.lang.XServiceInfo") Then
+		If thisComponent.supportsService ("com.sun.star.text.GenericTextDocument") Then
+			getDocumentType = "LibreOffice Writer"
+		ElseIf thisComponent.supportsService("com.sun.star.sheet.SpreadsheetDocument") Then
+			getDocumentType = "LibreOffice Calc"
+		ElseIf thisComponent.supportsService("com.sun.star.presentation.PresentationDocument") Then
+			getDocumentType = "LibreOffice Impress"
+		ElseIf thisComponent.supportsService("com.sun.star.drawing.GenericDrawingDocument") Then
+			getDocumentType = "LibreOffice Draw"
+		Else
+			getDocumentType = "Unknown Document type"
+		End If
+	Else
+		getDocumentType = "Not a document"
+	End If
+End Function
