@@ -1,7 +1,7 @@
 # ssh without password
 But : me connecter en ssh avec local_user depuis hote local vers hote distant avec remote_user
 
-##TAG## : ssh without password sshfs rsa keygen
+##TAG## : ssh without password sshfs rsa keygen sshfs fstab
 
 https://unix.stackexchange.com/questions/337465/username-and-password-in-command-line-with-sshfs
 
@@ -25,11 +25,11 @@ local_user@local_host:~$ ssh $REMOTE_SYSTEM "chmod 700 ~/.ssh; chmod 640 ~/.ssh/
 local_user@local_host:~$ ssh $REMOTE_SYSTEM
 ```
 
-# forcer demande de mot de passe
+# Forcer demande de mot de passe
 
 https://askubuntu.com/questions/419546/ssh-never-ask-for-a-password
 ```sh
-user@computer-ubu64:~$ ssh -o PubkeyAuthentication=no user@computer-w7p
+user@host:~$ ssh -o PubkeyAuthentication=no user@computer-w7p
 ```
 Pour une raison ignorée je ne pouvais pas directement accéder au démarrage par ssh à un poste Windows sous Cygwin.
 
@@ -38,3 +38,28 @@ Pour une raison ignorée je ne pouvais pas directement accéder au démarrage pa
 J'en ai déduis que user ne déclenchait pas la même chose que Admin. J'ai essayé de renommer le dossier ~/.ssh par ~/.ssh_old => OK. 
 
 Explication probable : j'ai mis en place un ssh sans mdp pour accéder à une VM et j'ai restauré un snapshot => les accès ne correspondaient plus. Pour s'affranchir de ce problème, il suffit de forcer la demande de mdp
+
+
+# sshfs
+
+## Créer le dossier de montage
+```sh
+mkdir /local/mount/folder
+```
+
+## Monter (/local/mount/folder doit exister)
+```sh
+sshfs user@remote_host:/remote/folder /local/mount/folder
+```
+
+## Démonter
+```sh
+fusermount -u /local/mount/folder
+```
+
+## Depuis fstab
+```sh
+// Testé avec succès depuis Ubuntu Xenial
+// https://unix.stackexchange.com/questions/59685/sshfs-mount-sudo-gets-permission-denied/59695#59695
+user@remote_host:/remote/folder /local/mount/folder     fuse.sshfs      allow_other     0       0
+```
