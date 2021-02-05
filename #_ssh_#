@@ -63,3 +63,12 @@ fusermount -u /local/mount/folder
 // https://unix.stackexchange.com/questions/59685/sshfs-mount-sudo-gets-permission-denied/59695#59695
 user@remote_host:/remote/folder /local/mount/folder     fuse.sshfs      allow_other     0       0
 ```
+
+# Désactiver les demandes "ennuyeuses" de ssh quand on est sûr
+Souvent avec les VMs, on a des messages en lancant ssh telles que "Offending key for IP ..." ou 
+"The authenticity of host ... can't be established ..." suivi d'une demande "Are you sur to continue (yes/no) ?"
+
+On peut [désactiver](https://www.shellhacks.com/disable-ssh-host-key-checking/) MAIS c'est TRES dangereux car une attaque MiM (Man in the Middle) devient plus réalisable (perte de sécurité)
+```sh
+user@host:~$ ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -CY user@remote
+```
