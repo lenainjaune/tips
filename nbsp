@@ -1,0 +1,9 @@
+```sh
+setxkbmap -option "nbsp:none"
+```
+
+But this changement gains instantly the whole system and for the proof, in LibreOffice Writer if I want to add a nbsp character between two words which must stay grouped, this does not working.
+
+https://unix.stackexchange.com/questions/668563/deal-with-nbsp-character-in-shell
+
+http://hauweele.net/~gawen/blog/?p=32
