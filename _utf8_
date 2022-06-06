@@ -1,0 +1,27 @@
+Certains fichiers téléchargés sont nommés en UTF-8
+
+```sh
+@$ IFS=$'\n' ; for f in $( ls -l ) ; do echo $f ; done ; unset IFS
+-rw-r--r-- 1 user user  8553745 14 janv. 17:06 𝐚𝐤𝐚-wxyz_oeJQkQ.txt
+
+@$ echo "𝐚𝐤𝐚-wxyz_oeJQkQ.txt" | hd
+00000000  f0 9d 90 9a f0 9d 90 a4  f0 9d 90 9a 2d 77 78 79  |............-wxy|
+00000010  7a 5f 6f 65 4a 51 6b 51  2e 74 78 74 0a           |z_oeJQkQ.txt.|
+0000001d
+```
+
+En ASCII **aka** devrait être codé sur 3 octets (1 octet/lettre), hors ici on voit 12 octets (symbolisés par les "." avant **-wxy**
+ car non interpreté par la commande **hd**). 
+
+Donc chaque lettre est codée sur 4 octets (3*4 = 12). Ainsi ce qui devrait être le "a" de **a**ka est codé "f0 9d 90 9a".
+
+**aka** est en réalité codé en **UTF-8 MATHEMATICAL BOLD CAPITAL** (https://www.utf8-chartable.de/unicode-utf8-table.pl?start=119808&number=1024)
+=> pour éviter tout futur problème, il est judicieux de renommer de tels fichiers en ASCII
+
+Solution : **iconv** (https://stackoverflow.com/questions/1975057/bash-convert-non-ascii-characters-to-ascii/1975093#1975093)
+```sh
+@$ echo "𝐚𝐤𝐚-wxyz_oeJQkQ.txt" | iconv -f utf-8 -t ascii//translit
+aka-wxyz_oeJQkQ.txt
+```
+
+
