@@ -149,6 +149,7 @@ user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -n 512 -v -C
 000001f0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 55 aa  |..............U.|
 00000200
 
+
 user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -n 512 -v -e '"%08_ax  " 8/1 "%02x "  "  " 8/1 "%02x "' -e ' "  |" 16/1 "%_p" "|\n"'
 # => même résulat que la commande précédente mais cette fois c'est moi qui l'ai paramétré (note : avec ce réglage il n'y a pas la ligne vide de fin)
 # Fonctionnement :
@@ -168,23 +169,22 @@ user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -n 512 -v -e '"%08_ax 
 #   - une unique fois, ajouter le délimiteur de fin et un saut de ligne
 00000000  eb 63 90 10 8e d0 bc 00  b0 b8 00 00 8e d8 8e c0  |.c..............|
 00000010  fb be 00 7c bf 00 06 b9  00 02 f3 a4 ea 21 06 00  |...|.........!..|
-00000020  00 be be 07 38 04 75 0b  83 c6 10 81 fe fe 07 75  |....8.u........u|
-..
+...
 
 
 # [7] Variante de [5] avec les offsets à gauche en couleur cyan et avec la signature de fin de MBR coloré en jaune (extrait depuis exemple du man) :
-user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -n 512 -v -e '"%08_ax_L[cyan] " 8/1 "%02x "  "   " 8/1 "%02x_L[green:0x55@510,green:0xaa@511,!red:0x55@510,!red:0xaa@511] "' -e ' "  |" 16/1 "%_p_L[yellow]" "|\n"'
+user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -n 512 -v -e '"%08_ax_L[cyan]  " 8/1 "%02x "  "  " 8/1 "%02x_L[green:0x55@510,green:0xaa@511,!red:0x55@510,!red:0xaa@511] "' -e ' "  |" 16/1 "%_p_L[yellow]" "|\n"'
 # "%02x " -> "%02x_L[green:0x55@510,green:0xaa@511,!red:0x55@510,!red:0xaa@511] "
 # => si octet 511 (offset par rapport au début : @510) == 0x55 et que 512 (@511) == 0xaa, alors on colore en vert, sinon en rouge
 
 
 # [8] Variante de [7] où toutes les données du MBR sont colorées pour différencier les parties (réglage unique) :
-user@host:~/Documents/mbr_understanding$ c='magenta@437-443,brown@0-445,cyan@446-461,blue@462-477,cyan@478-493,blue@494-509,green:0x55@510,green:0xaa@511,!red:0x55@510,!red:0xaa@511' ; hexdump /dev/sda -n 512 -v -e '"%08_ax " 8/1 "%02x_L['$c'] "  "   " 8/1 "%02x_L['$c'] "' -e ' "  |" 16/1 "%_p_L['$c']" "|\n"'
+user@host:~/Documents/mbr_understanding$ c='magenta@437-443,brown@0-445,cyan@446-461,blue@462-477,cyan@478-493,blue@494-509,green:0x55@510,green:0xaa@511,!red:0x55@510,!red:0xaa@511' ; hexdump /dev/sda -n 512 -v -e '"%08_ax  " 8/1 "%02x_L['$c'] "  "  " 8/1 "%02x_L['$c'] "' -e ' "  |" 16/1 "%_p_L['$c']" "|\n"'
 => MBC en marron, signature disque en magenta (prioritaire sur MBC), les 4 partitions et la signature en vert si reconnue, sinon en rouge
 
 
 # [9] Variante de [8] avec le repérage des colonnes :
-user@host:~/Documents/mbr_understanding$ printf "%0.s " {1..10} ; printf "%02x " {0..7} ; printf " " ; printf "%02x " {8..15} ; printf "    Decoded text \n" ; c='magenta@437-443,brown@0-445,cyan@446-461,blue@462-477,cyan@478-493,blue@494-509,green:0x55@510,green:0xaa@511,!red:0x55@510,!red:0xaa@511' ; hexdump /dev/sda -n 512 -v -e '"%08_ax  " 8/1 "%02x_L['$c'] " "   " 8/1 "%02x_L['$c'] "' -e ' "  |" 16/1 "%_p_L['$c']" "|\n"'
+user@host:~/Documents/mbr_understanding$ printf "%0.s " {1..10} ; printf "%02x " {0..7} ; printf " " ; printf "%02x " {8..15} ; printf "    Decoded text \n" ; c='magenta@437-443,brown@0-445,cyan@446-461,blue@462-477,cyan@478-493,blue@494-509,green:0x55@510,green:0xaa@511,!red:0x55@510,!red:0xaa@511' ; hexdump /dev/sda -n 512 -v -e '"%08_ax  " 8/1 "%02x_L['$c'] " "  " 8/1 "%02x_L['$c'] "' -e ' "  |" 16/1 "%_p_L['$c']" "|\n"'
           00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f     Decoded text 
 00000000  eb 63 90 10 8e d0 bc 00  b0 b8 00 00 8e d8 8e c0  |.c..............|
 00000010  fb be 00 7c bf 00 06 b9  00 02 f3 a4 ea 21 06 00  |...|.........!..|
@@ -199,6 +199,13 @@ Offset (h)  00 01 02 03 04 05 06 07   08 09 0a 0b 0c 0d 0e 0f    Decoded text
 ...
 
 
+# [11] Variante de [7] de hexdump avec awk qui donne plus de flexibilité et plus de couleurs possibles MAIS hexdump offre plus de simplicité dans l'écriture des règles
+user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -n 512 -v -e '/1 "%02x,"' | awk -v RS="," -v dt="" '{ dt = dt ( sprintf ( "%c" , ( strtonum ( "0x" $0 ) < 0x20 || strtonum ( "0x" $0 ) > 0x7f ? "." : strtonum ( "0x" $0 ) ) ) ) ; if ( ( NR - 1 ) % 16 == 0 ) printf "\033[36m%08x\033[0m  " , ( NR - 1 ) ; cs = ( NR == 511 && $0 == "55" || NR == 512 && $0 == "aa" ) ? "\033[32m" : "" ; printf cs "%s\033[0m " , $0 ; if ( NR % 16 && NR % 8 == 0 ) printf " " ; if ( NR % 16 == 0 ) { printf " |\033[1;33m" dt "\033[0m|\n" ; dt = "" } }'
+00000000  eb 63 90 10 8e d0 bc 00  b0 b8 00 00 8e d8 8e c0  |.c..............|
+00000010  fb be 00 7c bf 00 06 b9  00 02 f3 a4 ea 21 06 00  |...|.........!..|
+...
+
+
 
 # La signature disque serait selon [4] de 1b5 à 1bb (7 octets)
 # => ici, 
@@ -207,8 +214,11 @@ Offset (h)  00 01 02 03 04 05 06 07   08 09 0a 0b 0c 0d 0e 0f    Decoded text
 # MBC (Master Boot Code) : les 446 premiers octets
 
 # Lister tous les octets du MBC
-user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -n 446 -v -e '"%02x"' ; echo
-109063ebbcd08eb8b0c08ed88e7c00befbb90600bfa4f30200621ea7bebe00b7504388110c6837507fefeb416ebf3bb01b00280b27c008b01748a13cd024c7c00eafeeb000000008000000001009090faff7480c2f670c2f60580b202747c79ea8ec03100bcd08ed8a0fb2000ff3c7c64c2880274417bb52740307f67d88be06be0117e841b47c05cd55aabb72525a1355fb813d833775aa327401e14489c0314488400424489ff1004c75c1e8b665c89667c1e8b660889667c6044c70c5cb47000067213cd427000bb058b476ebd7313cdfd2845abe00d08382e97d93b60f6600ff6488c644896640d1b60f048802e2c140f488e8f084489e8c0c2b648966027c60a16675c009665ca1664ed231667c8834f76666d231d13b0474f7377d0844c588c1fee8c1c03088c10802c6885ad08e7000bbb8db31c313cd0201c38c1e72b91e6031db8e018000bff6f3fcc68eff611fa5be7c5a263eb7d8ee87d9dbea2be00342ee87dfeeb18cd425552476547002048006d6f206472616b7369446165520045200064726f7272bb000a0deb400013cac10cdc3f47500eba7b00
+
+user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -n 446 -v -e '/1 "%02x"' ; echo
+eb6390108ed0bc00b0b800008ed88ec0fbbe007cbf0006b90002f3a4ea21060000bebe073804750b83c61081fefe0775f3eb16b402b001bb007cb2808a74018b4c02cd13ea007c0000ebfe00000000000000000000000000000000800100000000000000fffa9090f6c2807405f6c2707402b280ea797c000031c08ed88ed0bc0020fba0647c3cff740288c252bb1704f607037406be887de81701be057cb441bbaa55cd135a52723d81fb55aa753783e101743231c0894404408844ff894402c7041000668b1e5c7c66895c08668b1e607c66895c0cc744060070b442cd137205bb0070eb76b408cd13730d5a84d20f83d000be937de98200660fb6c68864ff40668944040fb6d1c1e20288e888f4408944080fb6c2c0e80266890466a1607c6609c0754e66a15c7c6631d266f73488d131d266f774043b44087d37fec188c530c0c1e80208c188d05a88c6bb00708ec331dbb80102cd13721e8cc3601eb900018edb31f6bf00808ec6fcf3a51f61ff265a7cbe8e7deb03be9d7de83400bea27de82e00cd18ebfe47525542200047656f6d0048617264204469736b005265616400204572726f720d0a00bb0100b40ecd10ac3c0075f4c37bba0e000000
+
+
 
 
 # Afficher le code assembleur du MBC :
@@ -224,4 +234,3 @@ user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -s 446 -n 64 -v -e '1/
 00  59  27  31 05 254 255 255    501758 487895042
 00   0   0   0 00   0   0   0         0         0
 00   0   0   0 00   0   0   0         0         0
-
