@@ -106,12 +106,18 @@ Temporaire en vrac avant de finaliser
 # [2] http://poloastucien.free.fr/mbr_fat_secteurs_boot_h.html#1
 # => détaillent le MBR (systèmes Windows)
 
+# [12] http://multibooters.com/tutorials/view-and-change-disk-signature-in-mbr.html
+# => signature du disque sur Windows
+
 # [4] https://www.lifewire.com/what-is-the-master-boot-code-2625934
 # => détaille le MBC (voir plus bas)
 
 
 # [3] https://doc.ubuntu-fr.org/tutoriel/lubuntu_usb_creator#support_bootable_et_mbr
 # => ma 1ère vraie exploration
+
+# ATTENTION : un point litigeux pour la signature du disque (qui n'est pas le serial, ni l'identifiant) car selon [1] elle serait sur 7 octets en 1b5-1bc alors que [12] indique 4 octets en 1b8-1bc qui se vérifie par les informations dans le registre.
+=> signature du disque ???
 
 
 user@host:~/Documents/mbr_understanding$ hexdump /dev/sda -n 512 -v -C
