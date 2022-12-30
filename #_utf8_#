@@ -40,6 +40,7 @@ RO en attente de la fin de migration
 
 
 
+
 Certains fichiers téléchargés sont nommés en UTF-8
 
 ```sh
@@ -57,7 +58,7 @@ En ASCII **aka** devrait être codé sur 3 octets (1 octet/lettre), hors ici on 
 
 Donc chaque lettre est codée sur 4 octets (3*4 = 12). Ainsi ce qui devrait être le "a" de **a**ka est codé "f0 9d 90 9a".
 
-**aka** est en réalité codé en **UTF-8 MATHEMATICAL BOLD CAPITAL** (https://www.utf8-chartable.de/unicode-utf8-table.pl?start=119808&number=1024)
+**aka** est en réalité codé en **UTF-8 MATHEMATICAL BOLD CAPITAL*https://github.com/lenainjaune/tips* (https://www.utf8-chartable.de/unicode-utf8-table.pl?start=119808&number=1024)
 => pour éviter tout futur problème, il est judicieux de renommer de tels fichiers en ASCII
 
 Solution : **iconv** (https://stackoverflow.com/questions/1975057/bash-convert-non-ascii-characters-to-ascii/1975093#1975093)
